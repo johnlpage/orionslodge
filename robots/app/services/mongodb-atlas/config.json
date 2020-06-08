@@ -1,0 +1,11 @@
+{
+    "id": "5d46e499a1771cc594d419d7",
+    "name": "mongodb-atlas",
+    "type": "mongodb-atlas",
+    "config": {
+        "clusterName": "PetBot",
+        "readPreference": "primary",
+        "wireProtocolEnabled": false
+    },
+    "version": 1
+}

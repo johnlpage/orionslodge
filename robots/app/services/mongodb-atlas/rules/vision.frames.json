@@ -1,0 +1,23 @@
+{
+    "id": "5d487c1ea1771cc5945eb72c",
+    "database": "vision",
+    "collection": "frames",
+    "roles": [
+        {
+            "name": "default",
+            "apply_when": {},
+            "read": true,
+            "write": false,
+            "insert": false,
+            "delete": false,
+            "additional_fields": {}
+        }
+    ],
+    "schema": {
+        "properties": {
+            "_id": {
+                "bsonType": "objectId"
+            }
+        }
+    }
+}
