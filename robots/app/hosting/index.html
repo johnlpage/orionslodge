@@ -1,0 +1,201 @@
+<html>
+<head>
+  <meta name="theme-color" content="#121312">
+  <meta name="viewport" content="user-scalable=no">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="stylesheet.css">
+ 
+  <link rel="stylesheet" type="text/css" href="simple.css">
+  <script type="text/javascript" src="pako.js"></script>
+  <script src="https://s3.amazonaws.com/stitch-sdks/js/bundles/4.4.0/stitch.js"></script>
+<script>
+function drawFrame(data,when,width,height)
+{
+var c = document.getElementById("myCanvas");
+var ctx = c.getContext("2d");
+var scale=2
+c.width=width*scale;
+c.height=height*scale;
+
+if ( when != null && (new Date() - when) > 10000) {
+    ctx.fillStyle = "#000000"
+    ctx.fillRect(0,0,width*scale,height*scale);
+    ctx.fillStyle = "#00ff00"
+    ctx.font = "20px Arial";
+    ctx.fillText("Largo is Sleeping...",20,50);
+    ctx.fillText("Please come back later", 20, 90);
+    return;
+}
+var data        = pako.inflate(data);
+for(y=0;y<height;y++) {
+	for(x=0;x<width;x++) {
+		ptr = y*width+x;
+    colourcode = "#"
+    cc = "0" + Number(data[ptr]).toString(16)
+    colourcode = colourcode + cc.substr(-2).repeat(3)  
+		ctx.fillStyle = colourcode
+		ctx.fillRect(x*scale, y*scale, x*scale+scale,  y*scale+scale);
+	}
+ }
+}
+
+function imgclick(event)
+{
+   var canvas = document.getElementById("myCanvas");
+   elemLeft = canvas.offsetLeft;
+   elemTop = canvas.offsetTop;
+   width =  canvas.getBoundingClientRect().width;
+   height = canvas.getBoundingClientRect().height;
+   var x = event.pageX - elemLeft;
+   var y = event.pageY - elemTop;
+   console.log([x,y,width,height])
+   if(x < width*.33) {
+
+    voteMove('panleft');
+    return;
+   }
+   if(x > width*.67) {
+
+    voteMove('panright');
+    return;
+   }
+    if(y < height*.33) {
+
+    voteMove('tiltup');
+    return;
+   }
+    if(y > height*.67) {
+
+    voteMove('tiltdown');
+    return;
+   }
+}
+async function onLoad()
+{
+  const client = stitch.Stitch.initializeDefaultAppClient('petbot-zepzu');
+  await stitch.Stitch.defaultAppClient.auth.loginWithCredential(new stitch.AnonymousCredential())
+
+  const visionCollection = client.getServiceClient(stitch.RemoteMongoClient.factory, 'mongodb-atlas').db('vision').collection("frames");
+  const query = { "_id": "umberto" };
+  doc = await visionCollection.findOne(query);
+
+  drawFrame(doc.data.buffer,doc.when,doc.data.x,doc.data.y)
+  
+  var canvas = document.getElementById("myCanvas");
+  canvas.addEventListener('click', function(e) {  imgclick(e)}, false);
+
+  startWatcher();
+}
+
+async function startWatcher() {
+
+   const client = stitch.Stitch.defaultAppClient;
+   const mongodb = client.getServiceClient(stitch.RemoteMongoClient.factory, "mongodb-atlas");
+   const collection = mongodb.db("vision").collection("frames");
+   const stream = await collection.watch(["umberto"]);
+   stream.onNext((event) => {
+    try {
+      drawFrame(event.fullDocument.data.buffer,event.fullDocument.when,event.fullDocument.x,event.fullDocument.y)
+      energy = event.fullDocument.energy
+      lastfeed = event.fullDocument.lastfeed
+      console.log(lastfeed)
+      console.log(new Date().getTime() - lastfeed.getTime())
+      if(new Date().getTime() - lastfeed.getTime() < 2000 )
+      {
+        feeding=true
+      } else {
+        feeding=false
+      }
+      el = document.getElementById("energy")
+      if(el) {
+        if(energy>10000) {
+          energy=10000
+        }
+
+          el.innerHTML=`${energy/100} &#37;`
+        }
+      el = document.getElementById("feeding")
+      if(el) {
+          el.innerHTML=`${feeding?"Yes":"No"}`
+      }
+      }
+
+    
+    
+    catch(e) {
+      console.error(e)
+    }
+   });
+
+}
+
+async function voteMove(dir)
+{
+  var c = document.getElementById(dir);
+
+  const client = stitch.Stitch.defaultAppClient;
+  try {
+    r = await client.callFunction("voteMove",[dir]);
+ }
+ catch(e) {
+  console.error(e)
+ }
+}
+
+
+</script>
+</head>
+
+<body onLoad="onLoad();">
+  <div id="outer">
+    <div id="left">
+     
+        <canvas id="myCanvas" width=640 height=480 style="border:1px solid #000000;" ></canvas>
+     
+
+    </div>
+    <div id="right">
+      <div id="text">
+        <H1>Meet Largo, Our Pet Robot.</H1>
+        <p>Help Largo expore their world - powered by MongoDB.<p>
+         Largo can now look around by clicking/tapping on sides of the camera view.<p>
+         Largo can Grab things (Look down to see the grabber), turn and move.<p>
+         Moving Largo uses energy, Largo regains energy over time, If Largo runs out of enrgy it can look and turn but not move. 
+         The lighter it is the faster the energy comes back - Largo loves to sunbathe.<p>
+         Largo also has a feeding stations and can recharge if you approach it.<p>
+
+         Use the buttons below to move and open or close the claw, tap on the image edges to look around</p>
+           Current Energy Level: <span id="energy"></span>
+           Feeding:  <span id="feeding"></span>
+           
+      </div>
+      
+      
+   
+      <div id="buttons">
+        <table>
+          <tr>
+            <td></td>
+            <td><button class="button" onclick="voteMove('fwd')"><span class="material-icons">arrow_upward</span></button></td>
+            <td></td>
+            <td class="buttongap"></td>
+            <td><button class="button" onclick="voteMove('open')"><span class="material-icons">unfold_less</span></button></td></td>
+          </tr>
+
+          <tr>
+            <td><button class="button" onclick="voteMove('left')"><span class="material-icons">arrow_back</span></button></td>
+            <td><button class="button" onclick="voteMove('back')"><span class="material-icons">arrow_downward</span></button></td>
+            <td><button class="button" onclick="voteMove('right')"><span class="material-icons">arrow_forward</span></button></td>
+            <td class="buttongap"></td>
+            <td><button class="button" onclick="voteMove('close')"><span class="material-icons">unfold_more</span></button></td>
+          </tr>
+          
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+
+
+
+</html>
